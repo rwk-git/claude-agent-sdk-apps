@@ -40,6 +40,12 @@ A React + Express chat UI backed by the SDK, showing a full conversation loop ov
 ### 📄 [Resume Generator](./resume-generator)
 Generates a one-page `.docx` resume by web-searching a person's name (LinkedIn, GitHub, news) and assembling the findings.
 
+### 💾 [Storage Weekly Digest](./storage-weekly-digest)
+Turns a week of Blocks and Files storage news into a `.pptx` deck that focuses on the technical content:
+- One slide per article with the technical essence, prior art, and an open-source implementation path
+- Uses structured outputs (`outputFormat: json_schema`) so the slides are built from validated data
+- Opens with the week's top insights and releases
+
 ## Quick Start
 
 Each demo has its own directory with dedicated setup instructions. Navigate to the specific demo folder and follow its README for setup and usage details.
