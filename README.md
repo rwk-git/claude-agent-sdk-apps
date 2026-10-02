@@ -41,10 +41,16 @@ A React + Express chat UI backed by the SDK, showing a full conversation loop ov
 Generates a one-page `.docx` resume by web-searching a person's name (LinkedIn, GitHub, news) and assembling the findings.
 
 ### 💾 [Storage Weekly Digest](./storage-weekly-digest)
-Turns a week of Blocks and Files storage news into a `.pptx` deck that focuses on the technical content:
+Turns a week of storage news (Blocks and Files, StorageReview, or any WordPress site) into a `.pptx` deck that focuses on the technical content:
 - One slide per article with the technical essence, prior art, and an open-source implementation path
 - Uses structured outputs (`outputFormat: json_schema`) so the slides are built from validated data
 - Opens with the week's top insights and releases
+
+### 🔭 [arXiv Paper Scout](./arxiv-paper-scout)
+Screens an arXiv listing (thousands of papers) against a research objective written in Markdown and builds a `.pptx` deck of the best matches:
+- Collects abstracts politely via arXiv's OAI-PMH bulk endpoint, with a local cache
+- Scores abstracts in batches with structured outputs, then re-ranks the matches side by side
+- One slide per paper with the abstract, a fit score and the reason for it
 
 ## Quick Start
 
