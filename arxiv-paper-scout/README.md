@@ -101,6 +101,28 @@ Authentication works the same way as for Claude Code (`ANTHROPIC_API_KEY` or an 
 
 After editing it, run with `--rescreen` so that papers already scored are re-scored against the new version. After a run, read the *Also relevant* section and the low scores in the JSON. Papers there that you wanted, or selected papers you didn't, show what to change in the objective.
 
-## Cost
+## Time and cost
+
+A run ends with a summary of how long each step took, the cost, and, when you're logged in with a claude.ai subscription instead of an API key, how much of your plan's usage limits the run used:
+
+```
+============================================================
+⏱  Reading arXiv listings       45.1s
+   Collecting abstracts          0.0s
+   Screening                     6.2s
+   Ranking                       6.3s
+   Writing deck and summary      0.1s
+   Total                        59.2s
+💰 API-equivalent cost: $0.09 (covered by your team plan, not billed per token)
+📊 Plan usage: weekly 41% → 41% (+0), resets Sat, 3 Oct, 15:00 · 5-hour 57% → 57% (+0), resets Fri, 2 Oct, 17:00
+============================================================
+```
+
+The plan usage comes from the same data as Claude Code's `/usage` and is read before and after the run (`getPlanUsage` in `evaluate.ts`). Keep in mind:
+
+- The percentages are whole numbers for your whole account, so small runs show +0. Anything else using the account at the same time (Claude Code, claude.ai) is included in the difference.
+- The usage data comes from an experimental SDK call (`usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET`). If a later SDK version changes or removes it, the plan usage line is left out and the rest of the summary still prints.
+- With an API key, the line shows the actual per-token cost instead.
+
 
 A 100-paper trial run (`--limit 100 --max-papers 3`), including one ranking query with `opus`, cost $0.43. The run prints its total cost when it finishes.

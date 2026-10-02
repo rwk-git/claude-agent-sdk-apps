@@ -16,7 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseArgs } from 'util';
 import { absUrl, fetchListing, fillAbstracts, type Listing, type Paper } from './arxiv';
-import { screenPapers, rankPapers, getTotalCostUsd, type Evaluated } from './evaluate';
+import { screenPapers, rankPapers, getTotalCostUsd, getPlanUsage, type Evaluated, type PlanUsage, type UsageWindow } from './evaluate';
 import { buildDeck, fitLabel } from './deck';
 import { readJson, writeJson } from './cache';
 
@@ -113,7 +113,72 @@ function writeMarkdown(file: string, title: string, selected: Evaluated[], extra
   fs.writeFileSync(file, md.join('\n') + '\n');
 }
 
+const fmtDuration = (ms: number) => {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${(ms / 1000).toFixed(1)}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+  return `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}m`;
+};
+
+/** Duration of each step of the run, in the order they ran. */
+const timings: [string, number][] = [];
+
+async function timed<T>(step: string, fn: () => Promise<T>): Promise<T> {
+  const start = Date.now();
+  try {
+    return await fn();
+  } finally {
+    timings.push([step, Date.now() - start]);
+  }
+}
+
+// Reset times come back a fraction of a second before the hour; round to the minute.
+const fmtReset = (d: Date | null) =>
+  d
+    ? new Date(Math.round(d.getTime() / 60000) * 60000).toLocaleString('en-GB', {
+        weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      })
+    : '?';
+
+function fmtWindow(name: string, before: UsageWindow | null, after: UsageWindow | null): string | null {
+  if (!after) return null;
+  const delta = before ? ` (+${Math.max(0, after.utilization - before.utilization)})` : '';
+  const from = before ? `${before.utilization}% → ` : '';
+  return `${name} ${from}${after.utilization}%${delta}, resets ${fmtReset(after.resetsAt)}`;
+}
+
+function printSummary(startedAt: number, usageBefore: PlanUsage | null, usageAfter: PlanUsage | null) {
+  const rows: [string, number][] = [...timings, ['Total', Date.now() - startedAt]];
+  const width = Math.max(...rows.map(([step]) => step.length));
+  console.log('\n' + '='.repeat(60));
+  rows.forEach(([step, ms], i) => {
+    console.log(`${i === 0 ? '⏱  ' : '   '}${step.padEnd(width)}  ${fmtDuration(ms).padStart(8)}`);
+  });
+  const cost = `$${getTotalCostUsd().toFixed(2)}`;
+  if (usageAfter) {
+    console.log(`💰 API-equivalent cost: ${cost} (covered by your ${usageAfter.subscription} plan, not billed per token)`);
+    const windows = [
+      fmtWindow('weekly', usageBefore?.sevenDay ?? null, usageAfter.sevenDay),
+      fmtWindow('5-hour', usageBefore?.fiveHour ?? null, usageAfter.fiveHour),
+    ].filter(Boolean);
+    if (windows.length) console.log(`📊 Plan usage: ${windows.join(' · ')}`);
+  } else {
+    console.log(`💰 Claude cost this run: ${cost}`);
+  }
+  console.log('='.repeat(60) + '\n');
+}
+
 async function main() {
+  const startedAt = Date.now();
+  const usageBefore = await getPlanUsage();
+  try {
+    await run();
+  } finally {
+    printSummary(startedAt, usageBefore, usageBefore ? await getPlanUsage() : null);
+  }
+}
+
+async function run() {
   // Every --cat x --period combination, plus any listing URLs given as arguments.
   const categories = args.cat ? splitList(args.cat) : positionals.length ? [] : [DEFAULT_CATEGORY];
   const urls = [
@@ -135,12 +200,14 @@ async function main() {
   const listingNames: string[] = [];
   const listings: Listing[] = [];
   const byId = new Map<string, Paper>();
-  for (const url of urls) {
-    const listing = await fetchListing(url, delayMs);
-    listingNames.push(`${listing.category}/${listing.kind}`);
-    listings.push(listing);
-    for (const p of listing.papers) if (!byId.has(p.id)) byId.set(p.id, p);
-  }
+  await timed('Reading arXiv listings', async () => {
+    for (const url of urls) {
+      const listing = await fetchListing(url, delayMs);
+      listingNames.push(`${listing.category}/${listing.kind}`);
+      listings.push(listing);
+      for (const p of listing.papers) if (!byId.has(p.id)) byId.set(p.id, p);
+    }
+  });
   let papers = [...byId.values()];
   // A slice of the listing, e.g. --offset 2000 --limit 2000 for entries 2001-4000.
   const offset = Number(args.offset);
@@ -160,17 +227,19 @@ async function main() {
 
   // 2. Abstracts
   console.log('📚 Collecting abstracts\n');
-  papers = await fillAbstracts(papers, path.join(cacheDir, 'papers'), delayMs);
+  papers = await timed('Collecting abstracts', () => fillAbstracts(papers, path.join(cacheDir, 'papers'), delayMs));
 
   // 3. Screening
   console.log(`\n🧠 Screening ${papers.length} papers with ${args['screen-model']}\n`);
-  const screened = await screenPapers(papers, objective, path.join(cacheDir, 'screening'), {
-    model: args['screen-model']!,
-    batchSize: Number(args['batch-size']),
-    concurrency: Number(args.concurrency),
-    minScore,
-    rescreen: args.rescreen!,
-  });
+  const screened = await timed('Screening', () =>
+    screenPapers(papers, objective, path.join(cacheDir, 'screening'), {
+      model: args['screen-model']!,
+      batchSize: Number(args['batch-size']),
+      concurrency: Number(args.concurrency),
+      minScore,
+      rescreen: args.rescreen!,
+    }),
+  );
   const matched = screened
     .filter((e) => e.assessment.score >= minScore)
     .sort((a, b) => b.assessment.score - a.assessment.score);
@@ -180,12 +249,15 @@ async function main() {
   let selected = matched;
   if (matched.length > maxPapers) {
     console.log(`\n🏆 Ranking the matches with ${args['rank-model']} to keep the best ${maxPapers}\n`);
-    selected = await rankPapers(matched, objective, maxPapers, args['rank-model']!, path.join(cacheDir, 'ranking'));
+    selected = await timed('Ranking', () =>
+      rankPapers(matched, objective, maxPapers, args['rank-model']!, path.join(cacheDir, 'ranking')),
+    );
   }
   const selectedIds = new Set(selected.map((e) => e.paper.id));
   const extra = matched.filter((e) => !selectedIds.has(e.paper.id));
 
   // 5. Outputs
+  const outputsStart = Date.now();
   // One folder per set of categories, one file per period, e.g.
   // out/cs.AR+cs.DC+cs.OS/2026-09.pptx or out/cs.AI/2026-09_2001-4000.pptx for a slice.
   const cats = uniq(listings.map((l) => l.category)).sort();
@@ -213,10 +285,7 @@ async function main() {
     console.log('\nNo paper matched the objective, so no deck was written.');
   }
   console.log(`📝 Summary saved to: ${path.join(outDir, `${stem}.md`)}`);
-
-  console.log('\n' + '='.repeat(50));
-  console.log(`💰 Claude cost this run: $${getTotalCostUsd().toFixed(2)}`);
-  console.log('='.repeat(50) + '\n');
+  timings.push(['Writing deck and summary', Date.now() - outputsStart]);
 }
 
 main().catch((err) => {

@@ -285,3 +285,51 @@ export async function rankPapers(
   }
   return result.slice(0, count);
 }
+
+// ---------------------------------------------------------------------------
+// Plan usage
+// ---------------------------------------------------------------------------
+
+export interface UsageWindow {
+  /** Percentage of the window used, 0-100. */
+  utilization: number;
+  resetsAt: Date | null;
+}
+
+export interface PlanUsage {
+  /** e.g. "pro", "max", "team" */
+  subscription: string;
+  fiveHour: UsageWindow | null;
+  sevenDay: UsageWindow | null;
+}
+
+/**
+ * Current claude.ai plan utilization (what /usage shows), or null when the
+ * run is billed per token (API key, Bedrock, Vertex) or the lookup fails.
+ * Uses a session that never sends a message, so it costs nothing.
+ * Relies on an experimental SDK call that may change in later SDK versions.
+ */
+export async function getPlanUsage(): Promise<PlanUsage | null> {
+  let release!: () => void;
+  const idle = new Promise<void>((resolve) => (release = resolve));
+  async function* noMessages() {
+    await idle;
+  }
+  const q = query({ prompt: noMessages(), options: { tools: [], settingSources: [], persistSession: false } });
+  try {
+    const u = await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true });
+    if (!u.rate_limits_available || !u.rate_limits) return null;
+    const window = (w?: { utilization: number | null; resets_at: string | null } | null): UsageWindow | null =>
+      w && w.utilization !== null ? { utilization: w.utilization, resetsAt: w.resets_at ? new Date(w.resets_at) : null } : null;
+    return {
+      subscription: u.subscription_type ?? 'subscription',
+      fiveHour: window(u.rate_limits.five_hour),
+      sevenDay: window(u.rate_limits.seven_day),
+    };
+  } catch {
+    return null;
+  } finally {
+    release();
+    q.close();
+  }
+}
