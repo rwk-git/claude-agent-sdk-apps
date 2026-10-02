@@ -106,7 +106,9 @@ function parseListingPage(html: string, category: string): Paper[] {
   let listedUnder = '';
   for (const m of html.matchAll(/<h3>([\s\S]*?)<\/h3>|<dt>([\s\S]*?)<\/dt>\s*<dd>([\s\S]*?)<\/dd>/g)) {
     if (m[1] !== undefined) {
-      listedUnder = plainText(m[1]).replace(/\s*\(.*$/, ''); // drop "(showing 50 of 381 entries)"
+      const heading = plainText(m[1]);
+      // Monthly listings only have a "Total of N entries" heading, which isn't a section.
+      if (!heading.startsWith('Total of')) listedUnder = heading.replace(/\s*\(.*$/, ''); // drop "(showing 50 of 381 entries)"
       continue;
     }
     const [, , dt, dd] = m;
@@ -143,6 +145,11 @@ export async function fetchListing(listingUrl: string, delayMs: number): Promise
     url.searchParams.set('show', String(PAGE_SIZE));
     const html = await politeFetch(url.toString(), delayMs);
     const page = parseListingPage(html, category);
+    // Monthly listings (/list/cs.AI/2026-09) have no sections; label entries with the month.
+    if (/^\d{4}-\d{2}$/.test(kind)) {
+      const month = new Date(`${kind}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      for (const p of page) p.listedUnder ||= month;
+    }
     papers.push(...page);
     const total = Number(html.match(/Total of (\d+) entries/)?.[1] ?? 0);
     console.log(`  ${category}/${kind}: ${papers.length}${total ? ` of ${total}` : ''} entries`);

@@ -21,9 +21,13 @@ The included objective is aimed at storage research in general: devices and inte
 
 ```bash
 npm install
-npm start                                           # https://arxiv.org/list/cs.AI/recent
-npm start -- https://arxiv.org/list/cs.AR/recent https://arxiv.org/list/cs.DC/recent   # several listings, one deck
-npm start -- https://arxiv.org/list/cs.AI/new       # only today's announcement
+npm start                                           # cs.AI, recent (last 5 announcement days)
+npm start -- --cat cs.OS,cs.DC,cs.AR,cs.DB          # several categories, one deck
+npm start -- --cat cs.AI --period new               # only today's announcement
+npm start -- --cat cs.AI --period 2026-09           # a whole month (older papers)
+npm start -- --cat cs.OS,cs.DC --period 2026-07..2026-09   # a range of months
+npm start -- --cat cs.AI --period 2026-09 --offset 2000 --limit 2000   # entries 2001-4000 of that month
+npm start -- https://arxiv.org/list/cs.AI/recent    # listing URLs also work, alone or with --cat
 npm start -- --limit 100 --max-papers 5             # quick, cheap trial run
 npm start -- --new-only                             # leave out papers already selected in an earlier deck
 npm start -- --objective my-objective.md --min-score 6 --max-papers 30
@@ -31,6 +35,8 @@ npm start -- --objective my-objective.md --min-score 6 --max-papers 30
 
 | Option | Default | Meaning |
 |---|---|---|
+| `--cat` | `cs.AI` | Comma-separated arXiv categories. Defaults to cs.AI only when no listing URL is given |
+| `--period` | `recent` | Comma-separated: `recent` (last 5 announcement days), `new` (latest announcement), `YYYY-MM`, or a range `YYYY-MM..YYYY-MM`. Every category is read for every period |
 | `--objective` | `objective.md` | The research objective and scoring guide |
 | `--max-papers` | `50` | Number of paper slides. If more papers pass screening, a ranking pass keeps the best ones |
 | `--min-score` | `5` | Papers that score lower are dropped |
@@ -39,11 +45,29 @@ npm start -- --objective my-objective.md --min-score 6 --max-papers 30
 | `--batch-size` | `25` | Abstracts per screening query |
 | `--concurrency` | `8` | Screening queries (separate agents) running at the same time. Raise it to go faster, up to your API rate limit |
 | `--delay` | `15` | Seconds between arxiv.org page requests (the robots.txt `Crawl-delay`) |
-| `--limit` | none | Only the first N listing entries |
+| `--offset` | `0` | Skip the first N listing entries |
+| `--limit` | none | Only take N listing entries (after `--offset`) |
 | `--new-only` | off | Leave out papers listed in `out/seen.json` (papers selected in earlier runs) |
 | `--rescreen` | off | Re-score papers whose cached score was made with an earlier version of `objective.md` |
 
-Output is written to `out/<listing>/`, e.g. `out/cs.AI-recent/cs.AI-recent-2026-10-02.{pptx,md,json}`.
+Output goes to one folder per set of categories, with one deck (plus `.md` and `.json`) per period:
+
+```
+out/cs.AI/2026-09-28..2026-10-02.pptx      # --period recent: the dates it covered
+out/cs.AI/2026-09.pptx                     # --period 2026-09
+out/cs.AI/2026-09_2001-4000.pptx           # --offset 2000 --limit 2000
+out/cs.AR+cs.DB+cs.DC+cs.OS/2026-07..2026-09.pptx
+```
+
+Categories are sorted, so `--cat cs.OS,cs.DC` and `--cat cs.DC,cs.OS` write to the same folder. Running the same categories and period again replaces that deck.
+
+### Older papers
+
+`/recent` only covers the last five announcement days. For older papers, use the monthly listings: `--period YYYY-MM`, or `--period YYYY-MM..YYYY-MM` for several months. cs.AI had 6116 entries in September 2026. You can screen a whole month in one run, or in slices with `--offset` and `--limit`. Each slice gets its own files, e.g. `out/cs.AI/2026-09_2001-4000.pptx`, and its range is shown on the title slide.
+
+Papers already processed for another listing (for example the end of the month, which overlaps `/recent`) are not downloaded or screened again. A month-long bulk download takes a few minutes.
+
+Slices are best for spreading the cost over several runs. The deck of a slice only ranks the papers in that slice. To get one deck of the best papers of the month, run the whole month afterwards: everything is cached by then, so only the final ranking runs.
 
 ### Cache and resuming
 
