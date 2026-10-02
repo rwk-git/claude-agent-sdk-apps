@@ -27,8 +27,8 @@ export const Assessment = z.object({
   storage_angle: z
     .string()
     .describe(
-      'For scores >= 5, max ~240 chars: what the paper offers computational storage / DPUs / near-data processing, ' +
-        'or the concrete opportunity it opens for them. Empty for lower scores.',
+      'For scores >= 5, max ~240 chars: the advance, insight or opportunity the paper means for storage research, ' +
+        'as defined by the objective. Empty for lower scores.',
     ),
 });
 export type Assessment = z.infer<typeof Assessment>;
@@ -52,18 +52,18 @@ export interface Evaluated {
 // Prompts
 // ---------------------------------------------------------------------------
 
-const SCREENING_PROMPT = `You are screening new arXiv papers for a researcher in computational storage.
+const SCREENING_PROMPT = `You are screening new arXiv papers for the researchers described in the objective.
 
 You get the research objective, then a batch of papers (title, subjects, abstract). Score each paper from 0 to 10 using the objective's scoring guide.
 
 Rules:
 - Judge from the title and abstract only. Do not assume content the abstract does not support.
-- Be strict about vocabulary: a passing mention of "memory", "efficiency" or "scalability" is not a storage angle. Agent or conversational "memory" counts only if the paper deals with how it is stored, indexed, retrieved or moved at scale.
+- Be strict about vocabulary: a passing mention of "memory", "efficiency" or "scalability" is not a storage angle on its own. Follow the objective on which topics count and how much.
 - Do look for the non-obvious: papers whose bottleneck is memory capacity, memory/I-O bandwidth or data movement even when they never use storage terms. Those are exactly the opportunities the researcher wants to find.
 - For relevant papers, the storage angle must be specific (which data, which tier, what could move closer to the data), not generic.
 - Return exactly one result per paper, using the ids you are given.`;
 
-const RANKING_PROMPT = `You are selecting the papers a researcher in computational storage should read from this week's arXiv listings.
+const RANKING_PROMPT = `You are selecting the papers the researchers described in the objective should read from this week's arXiv listings.
 
 You get the research objective and the candidates that passed a first screening, each with its screening score and rationale. Those scores were given one batch at a time; now compare the candidates side by side.
 

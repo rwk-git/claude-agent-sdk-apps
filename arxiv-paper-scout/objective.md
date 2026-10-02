@@ -1,37 +1,64 @@
-# Computational storage, and where it could help
+# Storage research: advances, insights and opportunities
 
 ## Who this is for
 
-A researcher in computational storage who wants two kinds of papers:
+A team of storage researchers. Their work covers the whole storage stack: devices and their interfaces, storage servers and fabrics, file systems, and the compute that can run in or near storage. File systems are a major focus.
 
-1. Papers **in the field**: computational storage, DPUs, in-/near-storage and near-data processing, and the memory/storage hierarchy around them.
-2. Papers **from other fields** (especially AI/ML systems) whose bottleneck is memory capacity, memory or I/O bandwidth, or data movement, so that a smarter storage layer or moving compute closer to the data could change their results. The typical example is LLM inference, where the KV cache grows larger than GPU memory and gets moved between HBM, DRAM, CXL, SSDs and other servers over the network.
+They want to find papers that relate to storage in any of three ways:
 
-## Core topics (high scores)
+1. **Advances in storage**: the paper improves or proposes something in the storage stack itself (a device interface, an FTL, a file system, a storage server design, a caching or placement policy, in-storage processing, ...).
+2. **Insights for storage**: the paper isn't a storage paper, but it reveals something storage designers should know: how a workload reads, writes and keeps data (AI training and inference, agents, analytics), data growth, access patterns, or durability and consistency needs.
+3. **Opportunities for storage**: the system in the paper could become faster, cheaper, larger or simpler with better storage, a new file-system abstraction, or compute moved into or near storage. The typical example is LLM inference, where the KV cache outgrows GPU memory and has to move between HBM, DRAM, CXL memory, SSDs and other servers.
 
-- **Computational storage and in-storage computing**: computational SSDs, NVMe computational storage, offloading scans, filters, compression, encryption, deduplication, search or ML inference to the drive or its controller.
-- **Near-data and in-line processing**: processing-in-memory (PIM), near-memory compute, active storage, in-network computing, query/operator pushdown, CXL devices with compute, processing data as it flows through the I/O path.
-- **DPUs, SmartNICs and IPUs**: offloading the storage or network data path, NVMe-oF, disaggregated storage and memory, storage services on DPUs, DPUs in front of inference servers.
-- **KV cache management for LLM inference**: offloading and tiering (HBM / DRAM / CXL / SSD / remote), compression and quantization of the KV cache, eviction, prefix caching and reuse across requests, transferring the KV cache in disaggregated prefill/decode, sharing it across nodes.
-- **Storage and data movement for AI**: weight streaming and offloading (including MoE experts) from host memory or SSD, checkpointing, training data loading, vector search and RAG retrieval on SSDs, embedding tables, long-context memory pressure.
-- **Data reduction**: compression (classical, learned, or LLM-based), quantization *when it reduces footprint or bandwidth*, deduplication, sparsity and encodings that cut data movement.
-- **Memory/storage hierarchy and I/O stacks**: CXL memory, tiered and disaggregated memory, persistent memory, SSD internals (FTL, ZNS, FDP), io_uring/SPDK, file systems, object stores and databases designed for these devices or for AI workloads.
+## Topics
 
-## Opportunity topics (medium-to-high scores when the storage angle is real)
+### Storage devices, interfaces and servers
+- SSD internals: FTL, garbage collection, wear and write amplification, over-provisioning, data placement.
+- NVMe and its extensions: ZNS (zoned namespaces), FDP (flexible data placement), the NVMe key-value command set, computational storage commands, NVMe-oF.
+- Other media and tiers: HDDs (including SMR), tape and archival storage, persistent memory, CXL-attached memory and storage, storage tiering.
+- Storage servers and fabrics: JBOF and EBOF enclosures, disaggregated storage, storage networking, storage-server design and efficiency.
+- Reliability and efficiency: erasure coding, replication, failure analysis, energy use, cost per TB.
 
-Papers whose main contribution is elsewhere but whose performance or cost is dominated by memory footprint, bandwidth or data movement: long-context and agentic inference at scale, retrieval-heavy pipelines, large-scale data processing and analytics, graph processing, scientific or genomics data pipelines. Test: *would moving compute closer to the data, or a smarter storage layer, materially change this paper's results?* If yes, say how.
+### File systems (major focus)
+- New file-system designs and the state of the art: local, distributed and parallel file systems, metadata scaling, crash consistency, caching, file systems for new hardware (ZNS, CXL, persistent memory), user-space and FUSE file systems.
+- File systems for new workloads: AI training data and checkpoints, model weights, KV cache, agent workspaces.
+- Opportunities for new file systems: papers whose problem a new file-system abstraction or interface could solve better than today's (versioning, snapshots, semantic or content-addressed access, transactional updates, namespaces for agents).
+
+### Storage systems and data management
+- Object stores, key-value stores, storage engines (LSM trees, B-trees), and databases whose design is driven by storage.
+- I/O stacks: io_uring, SPDK, kernel bypass, block layer and page cache.
+- Caching, deduplication, compression and data formats that change the cost of storing or moving data.
+
+### In-storage and near-data computing
+- Computational storage and in-storage processing: offloading filters, scans, compression, encryption, search or ML inference to the drive.
+- Near-data and in-line processing: processing-in-memory, near-memory compute, operator pushdown, in-network computing.
+- DPUs, SmartNICs and IPUs on the storage or network data path, including DPUs in front of storage or inference servers.
+
+### Storage for AI
+- KV cache management for LLM inference: offloading and tiering (HBM / DRAM / CXL / SSD / remote), compression and quantization, eviction, prefix caching and reuse, transfer in disaggregated prefill/decode, sharing across nodes.
+- Model weights and data movement: weight streaming and offloading (including MoE experts), checkpointing, training data loading and preprocessing.
+- Retrieval: vector search and RAG indexes on SSDs, embedding tables, large-scale document stores.
+- Quantization, sparsity and compression *when they reduce footprint or bandwidth*.
+
+### Agentic AI and storage
+- **Agent memory**: how agents keep, organize, retrieve and forget memory, and what that means for the storage layer underneath (persistence, indexing, versioning, scale, latency).
+- **Agents and file systems**: agents that work with files, shells and workspaces; file systems as an agent tool or memory; sandboxing, snapshots and rollback of agent actions; context stored as files.
+- **Tools and data access**: tool-calling and retrieval patterns that create new I/O workloads.
+- Where in-storage or near-data compute could serve agents (search, filtering or summarization done next to the data).
+- AI and agents applied to storage itself: tuning, managing or designing storage systems and file systems.
 
 ## Out of scope (low scores)
 
-- ML algorithms, training recipes, prompting, reasoning, alignment, benchmarks and agent designs with no systems or data-movement implications.
-- "Memory" in the cognitive or agent sense (conversation memory, episodic memory, memory-augmented agents) unless the paper is about how that memory is stored, indexed, retrieved or moved efficiently at scale.
+- ML algorithms, training recipes, prompting, reasoning, alignment and benchmarks with no implications for how data is stored, moved or accessed.
+- Agent papers about planning, reasoning or multi-agent coordination where memory and tools play no part. (Agent memory designs that only change what goes into the prompt are weak fits: score them 3-4, or higher if they make concrete demands on a storage layer.)
 - Quantization or compression evaluated only for accuracy, with no footprint, bandwidth or latency angle.
 - Applications of AI to unrelated domains (medicine, law, education, ...).
+- "Memory" or "storage" used only as a metaphor.
 
 ## Scoring guide
 
-- **9-10 (excellent)**: directly about computational storage, DPUs, in-/near-storage or near-data processing, or KV cache / weight / data movement where the memory or storage tier is central.
-- **7-8 (strong)**: systems work on the memory/storage hierarchy, offloading, I/O for AI, or compression/quantization for footprint and bandwidth, with clear relevance to storage.
-- **5-6 (moderate)**: the contribution is elsewhere, but there is a clear and specific opportunity for storage or near-data computing.
+- **9-10 (excellent)**: a direct advance in storage, file systems or in-/near-storage computing, or a systems paper where the storage or memory tier is the core of the contribution (e.g. KV cache tiering to SSDs, a file system for agents).
+- **7-8 (strong)**: systems work in which storage, file systems or the memory hierarchy are a central part, or a paper with strong, concrete insights for storage (e.g. an I/O characterization of AI or agent workloads).
+- **5-6 (moderate)**: the contribution is elsewhere, but there is a clear and specific insight for storage or opportunity for it (e.g. an agent memory design that implies concrete persistence or retrieval requirements, or a data-movement-bound system).
 - **3-4 (weak)**: the link to storage is generic ("this needs a lot of data").
 - **0-2 (none)**: unrelated.

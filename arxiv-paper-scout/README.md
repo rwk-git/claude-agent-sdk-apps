@@ -2,7 +2,7 @@
 
 Goes through an arXiv listing (for example the ~2500 entries of [cs.AI/recent](https://arxiv.org/list/cs.AI/recent)), uses the Claude Agent SDK to score every abstract against a research objective written in [`objective.md`](./objective.md), and turns the best matches into a PowerPoint deck.
 
-The included objective is aimed at computational storage research: in-/near-storage computing, DPUs, near-data processing, and the places where storage could help other fields, for example KV cache management for LLM inference.
+The included objective is aimed at storage research in general: devices and interfaces (FTL, NVMe, ZNS, FDP, JBOF/EBOF, tape), storage servers, file systems, in-/near-storage computing and DPUs. It also covers the places where storage matters to other fields, such as KV cache management for LLM inference and memory and file systems for AI agents.
 
 ## What you get
 
@@ -11,7 +11,7 @@ The included objective is aimed at computational storage research: in-/near-stor
   - the full abstract
   - a score badge: 0-10 plus a qualitative label (*Excellent / Strong / Moderate / Weak fit*)
   - *Why it fits*: the reason for the score
-  - *Storage angle*: what the paper offers computational storage, or the opportunity it opens for it
+  - *Storage angle*: the advance, insight or opportunity the paper means for storage research
   - topic tags, and links to the arXiv page and the PDF
 - **An overview table** of the selected papers. Each title links to its slide, and each slide links back to the table.
 - **Also relevant**: papers that passed screening but didn't make the selection, with links.
