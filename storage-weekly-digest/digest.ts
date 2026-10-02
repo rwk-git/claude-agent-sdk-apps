@@ -1,23 +1,24 @@
 /**
  * Storage Weekly Digest using Claude Agent SDK
  *
- * Reads the last week of articles from blocksandfiles.com, has Claude strip
+ * Reads the last week of articles from a storage news site, has Claude strip
  * the marketing language from each one, and writes a PowerPoint deck with
  * one slide per technical article, a section for low-substance articles,
  * and the week's top insights and releases.
  *
- * Usage: npx tsx digest.ts [--days 7] [--until YYYY-MM-DD] [--model opus] [--concurrency 4] [--out out]
+ * Usage: npx tsx digest.ts [--site blocksandfiles,storagereview|all] [--days 7] [--until YYYY-MM-DD] [--model opus] [--concurrency 4] [--out out]
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseArgs } from 'util';
-import { fetchArticles, type Article } from './blocksandfiles';
+import { SOURCES, type Article, type Source } from './sources';
 import { analyzeArticle, synthesizeWeek, getTotalCostUsd, ArticleAnalysis, type RunOptions } from './analysis';
 import { buildDeck, type DeckItem } from './deck';
 
 const { values: args } = parseArgs({
   options: {
+    site: { type: 'string', default: 'blocksandfiles' }, // comma-separated source ids, or "all"
     days: { type: 'string', default: '7' },
     until: { type: 'string' }, // exclusive end date, defaults to now
     model: { type: 'string', default: 'opus' },
@@ -63,18 +64,16 @@ async function analyzeCached(article: Article, cacheDir: string, opts: RunOption
   }
 }
 
-async function main() {
-  const to = args.until ? new Date(`${args.until}T00:00:00`) : new Date();
-  const from = new Date(to.getTime() - Number(args.days) * 24 * 3600 * 1000);
-  const opts: RunOptions = { model: args.model! };
-  const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
-  const outDir = path.resolve(args.out!);
+async function digestSite(source: Source, from: Date, to: Date) {
+  const opts: RunOptions = { model: args.model!, siteName: source.name };
+  const outDir = path.resolve(args.out!, source.id);
   const cacheDir = path.join(outDir, 'cache');
   fs.mkdirSync(cacheDir, { recursive: true });
 
-  console.log(`\n📡 Fetching blocksandfiles.com articles from ${from.toISOString()} to ${to.toISOString()}\n`);
-  const articles = await fetchArticles(from, to);
+  console.log(`\n📡 Fetching ${source.name} articles from ${from.toISOString()} to ${to.toISOString()}\n`);
+  const articles = await source.fetchArticles(from, to);
   if (!articles.length) {
     console.log('No articles found in this window.');
     return;
@@ -86,17 +85,32 @@ async function main() {
     (x): x is DeckItem => x !== null,
   );
 
-  if (!items.length) throw new Error('No article could be analysed.');
+  if (!items.length) throw new Error(`No ${source.name} article could be analysed.`);
 
   console.log('\n📊 Synthesising the week...\n');
   const synthesis = await synthesizeWeek(items, opts);
-  fs.writeFileSync(path.join(outDir, `synthesis-${isoDay(from)}_${isoDay(to)}.json`), JSON.stringify(synthesis, null, 2));
+  const range = `${isoDay(from)}_${isoDay(to)}`;
+  fs.writeFileSync(path.join(outDir, `synthesis-${range}.json`), JSON.stringify(synthesis, null, 2));
 
-  const deckPath = path.join(outDir, `storage-digest-${isoDay(from)}_${isoDay(to)}.pptx`);
-  await buildDeck(items, synthesis, { from, to }, deckPath);
+  const deckPath = path.join(outDir, `${source.id}-digest-${range}.pptx`);
+  await buildDeck(source.name, items, synthesis, { from, to }, deckPath);
+  console.log(`\n📄 Deck saved to: ${deckPath}`);
+}
 
-  console.log('='.repeat(50));
-  console.log(`📄 Deck saved to: ${deckPath}`);
+async function main() {
+  const to = args.until ? new Date(`${args.until}T00:00:00`) : new Date();
+  const from = new Date(to.getTime() - Number(args.days) * 24 * 3600 * 1000);
+
+  const ids = args.site === 'all' ? SOURCES.map((s) => s.id) : args.site!.split(',').map((s) => s.trim());
+  const sources = ids.map((id) => {
+    const source = SOURCES.find((s) => s.id === id);
+    if (!source) throw new Error(`Unknown site "${id}". Known sites: ${SOURCES.map((s) => s.id).join(', ')}, all`);
+    return source;
+  });
+
+  for (const source of sources) await digestSite(source, from, to);
+
+  console.log('\n' + '='.repeat(50));
   console.log(`💰 Claude cost this run: $${getTotalCostUsd().toFixed(2)}`);
   console.log('='.repeat(50) + '\n');
 }

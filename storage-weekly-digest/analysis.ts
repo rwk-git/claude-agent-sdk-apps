@@ -5,7 +5,7 @@
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import type { Article } from './blocksandfiles';
+import type { Article } from './sources';
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -98,7 +98,7 @@ export type WeekSynthesis = z.infer<typeof WeekSynthesis>;
 // Prompts
 // ---------------------------------------------------------------------------
 
-const ANALYST_PROMPT = `You are a senior storage-systems engineer briefing a storage researcher on the week's trade press (Blocks and Files).
+const analystPrompt = (siteName: string) => `You are a senior storage-systems engineer briefing a storage researcher on the week's trade press (${siteName}).
 
 The articles are written largely in vendor marketing language: long-established ideas are presented as breakthroughs under product names. Your job is to recover the technical essence.
 
@@ -108,6 +108,7 @@ Rules:
 - Do not invent details. When the article gives no mechanism, you may state the most likely implementation but mark it as "likely".
 - Keep concrete figures and say what they measure; flag figures that lack context (no workload, no cluster size).
 - The open-source path must be concrete: name projects (Ceph, DAOS, Lustre, BeeGFS, OpenZFS, SPDK, Linux kernel features, Apache Iceberg, etc.) and the missing piece.
+- For hands-on reviews and benchmarks, focus on the test setup, the measured results and what they reveal about the design.
 - Write the summary and key insights for a reader skimming the slide: short sentences, plain English.
 - Respect the length hints in the schema: the output goes on a single slide.`;
 
@@ -125,6 +126,8 @@ Reference articles only by the ids you are given.`;
 
 export interface RunOptions {
   model: string;
+  /** Display name of the news site, used in the prompts. */
+  siteName: string;
 }
 
 let totalCostUsd = 0;
@@ -176,12 +179,12 @@ export async function analyzeArticle(article: Article, opts: RunOptions): Promis
   if (article.text.length < MIN_EXTRACTED_CHARS) {
     return runStructured(
       ArticleAnalysis,
-      ANALYST_PROMPT,
+      analystPrompt(opts.siteName),
       `${header}\n\nUse WebFetch to read the full article at the URL above, then analyse it.`,
       { ...opts, tools: ['WebFetch'] },
     );
   }
-  return runStructured(ArticleAnalysis, ANALYST_PROMPT, `${header}\n\n<article>\n${article.text}\n</article>`, opts);
+  return runStructured(ArticleAnalysis, analystPrompt(opts.siteName), `${header}\n\n<article>\n${article.text}\n</article>`, opts);
 }
 
 export async function synthesizeWeek(

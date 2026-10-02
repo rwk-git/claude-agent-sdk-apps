@@ -9,7 +9,7 @@
  */
 
 import PptxGenJS from 'pptxgenjs';
-import type { Article } from './blocksandfiles';
+import type { Article } from './sources';
 import type { ArticleAnalysis, WeekSynthesis } from './analysis';
 
 // pptxgenjs's ESM build is loaded as a namespace object by tsx; unwrap the class.
@@ -216,6 +216,7 @@ function addReleasesSlide(pptx: PptxGenJS, synthesis: WeekSynthesis, byId: Map<s
 }
 
 export async function buildDeck(
+  siteName: string,
   items: DeckItem[],
   synthesis: WeekSynthesis,
   window: { from: Date; to: Date },
@@ -223,7 +224,7 @@ export async function buildDeck(
 ) {
   const pptx = new Pptx();
   pptx.layout = 'LAYOUT_WIDE';
-  pptx.title = `Storage weekly digest ${fmtDate(window.from)} – ${fmtDate(window.to)}`;
+  pptx.title = `${siteName} storage digest ${fmtDate(window.from)} – ${fmtDate(window.to)}`;
 
   const technical = items.filter((i) => i.analysis.substance === 'technical');
   const low = items.filter((i) => i.analysis.substance === 'low');
@@ -236,7 +237,7 @@ export async function buildDeck(
     x: MARGIN, y: 2.4, w: CONTENT_W, h: 1, fontFace: FONT, fontSize: 40, bold: true, color: 'FFFFFF',
   });
   title.addText(
-    `Blocks and Files, ${fmtDate(window.from)} – ${fmtDate(window.to)}\n` +
+    `${siteName}, ${fmtDate(window.from)} – ${fmtDate(window.to)}\n` +
       `${items.length} articles · ${technical.length} technical · ${low.length} low-substance`,
     { x: MARGIN, y: 3.5, w: CONTENT_W, h: 1, fontFace: FONT, fontSize: 18, color: 'FFFFFF' },
   );
