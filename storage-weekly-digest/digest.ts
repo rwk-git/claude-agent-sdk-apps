@@ -18,7 +18,7 @@ import { buildDeck, type DeckItem } from './deck';
 
 const { values: args } = parseArgs({
   options: {
-    site: { type: 'string', default: 'blocksandfiles' }, // comma-separated source ids, or "all"
+    site: { type: 'string', default: 'all' }, // comma-separated source ids, or "all"
     days: { type: 'string', default: '7' },
     until: { type: 'string' }, // exclusive end date, defaults to now
     model: { type: 'string', default: 'opus' },

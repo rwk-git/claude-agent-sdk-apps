@@ -21,9 +21,9 @@ Turns a week of storage news from [Blocks and Files](https://www.blocksandfiles.
 
 ```bash
 npm install
-npm start                                   # Blocks and Files, last 7 days
+npm start                                   # all sites, last 7 days (one deck per site)
 npm start -- --site storagereview
-npm start -- --site all                     # one deck per site
+npm start -- --site blocksandfiles,storagereview
 npm start -- --until 2026-09-28             # the 7 days before 28 Sep 2026
 npm start -- --days 14 --model sonnet --concurrency 6
 ```
