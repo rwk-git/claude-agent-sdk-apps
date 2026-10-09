@@ -83,6 +83,35 @@ Scores are **not** redone when you edit `objective.md`. Each cache entry records
 
 Authentication works the same way as for Claude Code (`ANTHROPIC_API_KEY` or an existing `claude` login).
 
+## Papers by problem (buckets)
+
+`buckets.ts` works on every paper already in the cache with a screening score of at least `--min-score`, across all the runs so far. It downloads nothing. For each paper it first extracts the problem the paper addresses (from the title and abstract), then does one of two things:
+
+```bash
+npm run classify                                    # sort the papers into the buckets of buckets.md
+npm run classify -- --buckets cluster_buckets.md    # ... or of another buckets file
+npm run classify -- --max-buckets 1                 # exactly one bucket per paper
+npm run cluster                                     # propose buckets from the problems, written to cluster_buckets.md
+npm run cluster -- --count 8 --buckets my_buckets.md
+```
+
+- **classify** puts each paper in up to `--max-buckets` buckets of the buckets file, main bucket first. The model is told to add a bucket only when it covers a substantial part of the paper's problem, so most papers get one or two. It writes `out/buckets/<buckets file name>.md` and a `.json` with the same data plus the reason for each choice. The `.md` file has a count per bucket (*Main*: papers for which it is the main bucket, *Total*: all papers in it), then one table per bucket with score, title, problem and the paper's other buckets (the main one in bold). A paper is listed under each of its buckets, with the papers for which that bucket is the main one listed first.
+- **cluster** sends all the problems to `--cluster-model` in one query and writes the buckets it proposes to `cluster_buckets.md`, in the format `classify` reads. Edit the file if you like, then run `classify` with it.
+
+A buckets file is a Markdown list: each top-level `- ` bullet is a bucket name, and indented lines below a bullet (optional) describe what belongs in it. The descriptions are passed to the model and help with borderline papers. Headings and other text are ignored. An `Other` bucket is added if the file doesn't have one.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--buckets` | `buckets.md` (classify), `cluster_buckets.md` (cluster) | Buckets file to read (classify) or write (cluster) |
+| `--max-buckets` | `3` | classify: most buckets per paper. `1` gives one bucket per paper |
+| `--count` | model picks 5-10 | cluster: number of buckets to propose, `Other` excluded |
+| `--min-score` | `5` | Only papers with this screening score or more |
+| `--model` | `sonnet` | Problem extraction and classification |
+| `--cluster-model` | `opus` | The clustering query |
+| `--batch-size`, `--concurrency`, `--out` | `25`, `8`, `out` | As for `scout.ts` |
+
+Problems are cached in `out/cache/problems/<id>.json` and classifications in `out/cache/buckets/<hash>/<id>.json`, where the hash identifies the bucket list and `--max-buckets`. So a new run only processes papers screened since the last one, and editing a buckets file or changing `--max-buckets` re-classifies every paper. Clustering is not cached: each `cluster` run asks again.
+
 ## How it works
 
 1. **Listings** (`arxiv.ts`): the listing is read 2000 entries per request (the largest page size arXiv allows) for ids, titles, authors and subjects. `/new` listings already include the abstracts.

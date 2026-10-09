@@ -95,7 +95,7 @@ let totalCostUsd = 0;
 export const getTotalCostUsd = () => totalCostUsd;
 
 /** Runs one tool-less query() and returns its structured output, validated with `schema`. */
-async function runStructured<T>(schema: z.ZodType<T>, systemPrompt: string, prompt: string, model: string): Promise<T> {
+export async function runStructured<T>(schema: z.ZodType<T>, systemPrompt: string, prompt: string, model: string): Promise<T> {
   // The CLI's schema validator does not know zod's default draft-2020-12 `$schema` tag.
   const { $schema: _, ...jsonSchema } = z.toJSONSchema(schema);
   const q = query({
@@ -121,7 +121,7 @@ async function runStructured<T>(schema: z.ZodType<T>, systemPrompt: string, prom
 }
 
 /** Runs `fn` over `items` with at most `limit` calls in flight. */
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
   const worker = async () => {
@@ -134,7 +134,7 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: nu
   return results;
 }
 
-const chunk = <T>(items: T[], size: number) =>
+export const chunk = <T>(items: T[], size: number) =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, (i + 1) * size));
 
 // ---------------------------------------------------------------------------
