@@ -20,14 +20,14 @@ export const Assessment = z.object({
   score: z.number().int().min(0).max(10).describe("Fit with the objective, following the objective's scoring guide."),
   topics: z
     .array(z.string())
-    .describe('0-3 short topic tags (1-3 words each), e.g. "KV cache offload", "DPU", "compression". Empty when unrelated.'),
+    .describe("0-3 short topic tags (1-3 words each) drawn from the objective's topics. Empty when unrelated."),
   rationale: z
     .string()
     .describe('Why the paper does or does not fit. Max ~220 chars; a few words is enough for scores below 5.'),
-  storage_angle: z
+  angle: z
     .string()
     .describe(
-      'For scores >= 5, max ~240 chars: the advance, insight or opportunity the paper means for storage research, ' +
+      'For scores >= 5, max ~240 chars: the specific advance, insight or opportunity the paper means for the researchers, ' +
         'as defined by the objective. Empty for lower scores.',
     ),
 });
@@ -58,9 +58,9 @@ You get the research objective, then a batch of papers (title, subjects, abstrac
 
 Rules:
 - Judge from the title and abstract only. Do not assume content the abstract does not support.
-- Be strict about vocabulary: a passing mention of "memory", "efficiency" or "scalability" is not a storage angle on its own. Follow the objective on which topics count and how much.
-- Do look for the non-obvious: papers whose bottleneck is memory capacity, memory/I-O bandwidth or data movement even when they never use storage terms. Those are exactly the opportunities the researcher wants to find.
-- For relevant papers, the storage angle must be specific (which data, which tier, what could move closer to the data), not generic.
+- Be strict about vocabulary: a passing mention of a topic word is not a fit on its own. Follow the objective on which topics count and how much.
+- Do look for the non-obvious: papers that matter to the researchers even when they never use the objective's terms.
+- For relevant papers, the angle must be specific to the paper, not generic.
 - Return exactly one result per paper, using the ids you are given.`;
 
 const RANKING_PROMPT = `You are selecting the papers the researchers described in the objective should read from this week's arXiv listings.
@@ -69,7 +69,7 @@ You get the research objective and the candidates that passed a first screening,
 
 Rules:
 - Select the requested number of papers, most relevant first. Relevance to the objective comes first; among papers of similar relevance, prefer ones that cover different topics of the objective, and concrete systems contributions over position papers.
-- Re-score each selected paper on the same 0-10 scale, and rewrite its rationale and storage angle if the comparison changes your view.
+- Re-score each selected paper on the same 0-10 scale, and rewrite its rationale and angle if the comparison changes your view.
 - Use only the ids you are given.`;
 
 const objectiveBlock = (objective: string) => `<objective>\n${objective.trim()}\n</objective>`;
@@ -176,7 +176,10 @@ export async function screenPapers(
   let stale = 0;
   for (const p of papers) {
     const entry = readJson<CacheEntry>(cacheFile(cacheDir, p.id));
-    const parsed = Assessment.safeParse(entry?.assessment);
+    // Scores cached before the field was renamed call it storage_angle.
+    const legacy = entry?.assessment as (Assessment & { storage_angle?: string }) | undefined;
+    if (legacy && legacy.angle === undefined && legacy.storage_angle !== undefined) legacy.angle = legacy.storage_angle;
+    const parsed = Assessment.safeParse(legacy);
     if (!parsed.success) continue;
     if (entry!.objective_hash !== hash) {
       stale++;
@@ -260,7 +263,7 @@ export async function rankPapers(
     `${objectiveBlock(objective)}\n\nSelect the ${count} most relevant of these ${pool.length} candidates.\n\n` +
     pool
       .map(({ paper, assessment: a }) =>
-        paperBlock(paper, `Screening: ${a.score}/10. ${a.rationale}${a.storage_angle ? ` Storage angle: ${a.storage_angle}` : ''}`),
+        paperBlock(paper, `Screening: ${a.score}/10. ${a.rationale}${a.angle ? ` Angle: ${a.angle}` : ''}`),
       )
       .join('\n\n');
 

@@ -61,6 +61,8 @@ out/cs.AR+cs.DB+cs.DC+cs.OS/2026-07..2026-09.pptx
 
 Categories are sorted, so `--cat cs.OS,cs.DC` and `--cat cs.DC,cs.OS` write to the same folder. Running the same categories and period again replaces that deck.
 
+An objective file named `<prefix>_objective.md` writes everything that depends on it (decks, screening and ranking caches, `seen.json`) under `out/<prefix>/` instead, so objectives don't overwrite each other. For example `--objective agentic_objective.md` writes `out/agentic/cs.AI/2026-09.pptx`. The default `objective.md` keeps the layout above. [`agentic_objective.md`](./agentic_objective.md) is an included second objective, aimed at agentic AI and coding agents.
+
 ### Older papers
 
 `/recent` only covers the last five announcement days. For older papers, use the monthly listings: `--period YYYY-MM`, or `--period YYYY-MM..YYYY-MM` for several months. cs.AI had 6116 entries in September 2026. You can screen a whole month in one run, or in slices with `--offset` and `--limit`. Each slice gets its own files, e.g. `out/cs.AI/2026-09_2001-4000.pptx`, and its range is shown on the title slide.

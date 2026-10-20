@@ -119,11 +119,11 @@ function addPaperSlide(pptx: PptxGenJS, { paper, assessment: a }: Evaluated, ran
     { x: MARGIN, y: 1.6, w: 7.8, h: 5.3, fontFace: FONT, color: C.ink, valign: 'top' },
   );
 
-  // Right: why it fits, the storage angle, topics.
+  // Right: why it fits, the angle, topics.
   const x = 8.55;
   const w = W - MARGIN - x;
   addPanel(slide, x, 1.6, w, 2.35, 'Why it fits', a.rationale, C.accentSoft);
-  addPanel(slide, x, 4.05, w, 2.25, 'Storage angle', a.storage_angle || 'None identified.', C.warnSoft);
+  addPanel(slide, x, 4.05, w, 2.25, 'Angle', a.angle || 'None identified.', C.warnSoft);
   if (a.topics.length) {
     slide.addText(a.topics.join('  ·  '), {
       x, y: 6.35, w, h: 0.5, fontFace: FONT, fontSize: fitFontSize([a.topics.join('  ·  ')], w - 0.1, 0.45, 11), color: C.accent, bold: true, valign: 'top',

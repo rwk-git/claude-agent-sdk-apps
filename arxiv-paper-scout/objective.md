@@ -55,6 +55,12 @@ They want to find papers that relate to storage in any of three ways:
 - Applications of AI to unrelated domains (medicine, law, education, ...).
 - "Memory" or "storage" used only as a metaphor.
 
+## How to screen
+
+- A passing mention of "memory", "efficiency" or "scalability" is not a storage angle on its own.
+- Look for the non-obvious: papers whose bottleneck is memory capacity, memory/I-O bandwidth or data movement even when they never use storage terms. Those are exactly the opportunities the researchers want to find.
+- For relevant papers, the angle must say what the paper means for storage, specifically: which data, which tier, what could move closer to the data.
+
 ## Scoring guide
 
 - **9-10 (excellent)**: a direct advance in storage, file systems or in-/near-storage computing, or a systems paper where the storage or memory tier is the core of the contribution (e.g. KV cache tiering to SSDs, a file system for agents).

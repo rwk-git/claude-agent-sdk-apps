@@ -193,7 +193,12 @@ async function run() {
 
   const outRoot = path.resolve(args.out!);
   const cacheDir = path.join(outRoot, 'cache');
-  const seenFile = path.join(outRoot, 'seen.json');
+  // Results of an objective other than objective.md go to their own folder,
+  // e.g. agentic_objective.md -> out/agentic/. Paper abstracts stay shared.
+  const objectivePrefix = path.basename(args.objective!).match(/^(.+)_objective\.md$/)?.[1];
+  const objectiveRoot = objectivePrefix ? path.join(outRoot, objectivePrefix) : outRoot;
+  const objectiveCacheDir = path.join(objectiveRoot, 'cache');
+  const seenFile = path.join(objectiveRoot, 'seen.json');
 
   // 1. Listings
   console.log(`\n📡 Reading ${urls.length} arXiv listing(s)\n`);
@@ -232,7 +237,7 @@ async function run() {
   // 3. Screening
   console.log(`\n🧠 Screening ${papers.length} papers with ${args['screen-model']}\n`);
   const screened = await timed('Screening', () =>
-    screenPapers(papers, objective, path.join(cacheDir, 'screening'), {
+    screenPapers(papers, objective, path.join(objectiveCacheDir, 'screening'), {
       model: args['screen-model']!,
       batchSize: Number(args['batch-size']),
       concurrency: Number(args.concurrency),
@@ -250,7 +255,7 @@ async function run() {
   if (matched.length > maxPapers) {
     console.log(`\n🏆 Ranking the matches with ${args['rank-model']} to keep the best ${maxPapers}\n`);
     selected = await timed('Ranking', () =>
-      rankPapers(matched, objective, maxPapers, args['rank-model']!, path.join(cacheDir, 'ranking')),
+      rankPapers(matched, objective, maxPapers, args['rank-model']!, path.join(objectiveCacheDir, 'ranking')),
     );
   }
   const selectedIds = new Set(selected.map((e) => e.paper.id));
@@ -259,10 +264,11 @@ async function run() {
   // 5. Outputs
   const outputsStart = Date.now();
   // One folder per set of categories, one file per period, e.g.
-  // out/cs.AR+cs.DC+cs.OS/2026-09.pptx or out/cs.AI/2026-09_2001-4000.pptx for a slice.
+  // out/cs.AR+cs.DC+cs.OS/2026-09.pptx or out/cs.AI/2026-09_2001-4000.pptx for a slice
+  // (under out/<prefix>/ for <prefix>_objective.md).
   const cats = uniq(listings.map((l) => l.category)).sort();
   const period = periodName(listings);
-  const outDir = path.join(outRoot, cats.join('+'));
+  const outDir = path.join(objectiveRoot, cats.join('+'));
   fs.mkdirSync(outDir, { recursive: true });
   const stem = `${period}${range ? `_${range.from}-${range.to}` : ''}`;
   const label = `${cats.join(', ')} · ${period}${range ? ` (entries ${range.from}-${range.to} of ${total})` : ''}`;
